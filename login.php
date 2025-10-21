@@ -1,8 +1,5 @@
 <?php
-require_once 'config/database.php';
 require_once 'includes/db.php';
-require_once 'includes/auth.php';
-
 startSecureSession();
 
 // Redirect if already logged in
