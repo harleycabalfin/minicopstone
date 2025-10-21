@@ -1,125 +1,96 @@
 <?php
-require_once '../../config/database.php';
 require_once '../../includes/db.php';
-require_once '../../includes/auth.php';
-require_once '../../includes/functions.php';
-
-requireAdmin();
-checkSessionTimeout();
-
-$page_title = "User Management";
+requireUser();
 $db = getDB();
 
-// Fetch all users
-$query = "SELECT user_id, username, full_name, email, role, is_active, created_at, last_login 
-          FROM users 
-          ORDER BY created_at DESC";
-$result = $db->query($query);
-$users = $result->fetch_all(MYSQLI_ASSOC);
-
-include '../../includes/header.php';
+// Fetch all users including inactive
+$stmt = $db->query("
+    SELECT user_id, full_name, username, role, status, created_at
+    FROM users
+    ORDER BY created_at DESC
+");
+$users = $stmt->fetch_all(MYSQLI_ASSOC);
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Management - <?php echo SITE_NAME; ?></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
 
-<div class="container mx-auto">
-    <div class="flex justify-between items-center mb-6">
-        <h2 class="text-3xl font-bold text-gray-800">User Management</h2>
-        <a href="add.php" class="btn btn-primary">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-            </svg>
-            Add New User
-        </a>
+  <!-- Header -->
+  <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold"><?php echo SITE_NAME; ?> - User Management</h1>
+    <div class="flex gap-4">
+      <a href="../dashboard.php" class="hover:text-gray-300">Dashboard</a>
+      <a href="add.php" class="bg-orange-500 hover:bg-orange-600 px-4 py-2 rounded-lg text-white font-semibold">Add User</a>
     </div>
+  </div>
 
-    <!-- Search Bar -->
-    <div class="bg-black rounded-lg shadow-md p-4 mb-6">
-        <div class="flex items-center">
-            <svg class="w-5 h-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-            <input type="text" 
-                   id="searchInput" 
-                   placeholder="Search users..." 
-                   class="w-full border-none focus:outline-none"
-                   onkeyup="tableUtils.searchTable('searchInput', 'usersTable')">
-        </div>
+  <!-- User Table -->
+  <div class="container mx-auto px-6 py-8">
+    <h2 class="text-xl font-semibold mb-4 text-gray-700">User List</h2>
+    <div class="bg-white shadow-md rounded-lg overflow-hidden">
+      <table class="min-w-full text-sm text-left">
+        <thead class="bg-gray-100 text-gray-700 uppercase text-xs font-semibold">
+          <tr>
+            <th class="px-6 py-3">Name</th>
+            <th class="px-6 py-3">Username</th>
+            <th class="px-6 py-3">Role</th>
+            <th class="px-6 py-3">Status</th>
+            <th class="px-6 py-3">Created</th>
+            <th class="px-6 py-3 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php if (count($users) > 0): ?>
+            <?php foreach ($users as $u): ?>
+              <tr class="border-t hover:bg-gray-50">
+                <td class="px-6 py-3 font-medium text-gray-900"><?php echo htmlspecialchars($u['full_name']); ?></td>
+                <td class="px-6 py-3 text-gray-700"><?php echo htmlspecialchars($u['username']); ?></td>
+                <td class="px-6 py-3 capitalize text-gray-600"><?php echo htmlspecialchars($u['role']); ?></td>
+                
+                <!-- Status Badge -->
+                <td class="px-6 py-3">
+                  <?php if ($u['status'] === 'active'): ?>
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700">
+                      🟢 Active
+                    </span>
+                  <?php else: ?>
+                    <span class="inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-700">
+                      🔴 Inactive
+                    </span>
+                  <?php endif; ?>
+                </td>
+
+                <td class="px-6 py-3 text-gray-500 text-sm"><?php echo htmlspecialchars($u['created_at']); ?></td>
+
+                <!-- Actions -->
+                <td class="px-6 py-3 text-center space-x-2">
+                  <a href="edit.php?id=<?php echo $u['user_id']; ?>" 
+                     class="text-blue-600 hover:text-blue-800 font-medium">Edit</a>
+
+                  <?php if ($u['status'] === 'active'): ?>
+                    <a href="delete.php?id=<?php echo $u['user_id']; ?>" 
+                       onclick="return confirm('Are you sure you want to archive this user?');"
+                       class="text-red-600 hover:text-red-800 font-medium">Archive</a>
+                  <?php else: ?>
+                    <a href="restore.php?id=<?php echo $u['user_id']; ?>" 
+                       onclick="return confirm('Restore this user account?');"
+                       class="text-green-600 hover:text-green-800 font-medium">Restore</a>
+                  <?php endif; ?>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+          <?php else: ?>
+            <tr><td colspan="6" class="text-center py-6 text-gray-500">No users found.</td></tr>
+          <?php endif; ?>
+        </tbody>
+      </table>
     </div>
-
-    <!-- Users Table -->
-    <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <table class="w-full" id="usersTable">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                <?php foreach ($users as $user): ?>
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="h-10 w-10 flex-shrink-0">
-                                    <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                                        <span class="text-green-600 font-semibold">
-                                            <?php echo strtoupper(substr($user['full_name'], 0, 1)); ?>
-                                        </span>
-                                    </div>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900"><?php echo htmlspecialchars($user['full_name']); ?></div>
-                                    <div class="text-sm text-gray-500">@<?php echo htmlspecialchars($user['username']); ?></div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <?php echo htmlspecialchars($user['email']); ?>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="badge <?php echo $user['role'] === 'admin' ? 'badge-info' : 'badge-success'; ?>">
-                                <?php echo ucfirst($user['role']); ?>
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="badge <?php echo $user['is_active'] ? 'badge-success' : 'badge-danger'; ?>">
-                                <?php echo $user['is_active'] ? 'Active' : 'Inactive'; ?>
-                            </span>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            <?php echo $user['last_login'] ? formatDateTime($user['last_login']) : 'Never'; ?>
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <a href="edit.php?id=<?php echo $user['user_id']; ?>" class="text-blue-600 hover:text-blue-900 mr-3">
-                                Edit
-                            </a>
-                            <?php if ($user['user_id'] != $_SESSION['user_id']): ?>
-                                <a href="delete.php?id=<?php echo $user['user_id']; ?>" 
-                                   class="text-red-600 hover:text-red-900 btn-delete"
-                                   data-item-name="<?php echo htmlspecialchars($user['full_name']); ?>">
-                                    Delete
-                                </a>
-                            <?php endif; ?>
-                        </td>
-                    </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Export Button -->
-    <div class="mt-6 flex justify-end">
-        <button onclick="tableUtils.exportTableToCSV('usersTable', 'users_export.csv')" 
-                class="btn bg-gray-600 text-white">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-            </svg>
-            Export to CSV
-        </button>
-    </div>
-</div>
-
-<?php include '../../includes/footer.php'; ?>
+  </div>
+</body>
+</html>

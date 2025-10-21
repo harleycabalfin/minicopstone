@@ -48,16 +48,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100">
-    <!-- Header -->
-    <div class="bg-gray-800 text-white p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <h1 class="text-2xl font-bold"><?php echo SITE_NAME; ?> - Add Feed Stock</h1>
-            <div class="flex gap-4">
-                <a href="index.php" class="hover:text-gray-300">Back to Inventory</a>
-                <a href="../dashboard.php" class="hover:text-gray-300">Dashboard</a>
-            </div>
-        </div>
-    </div>
 
     <!-- Main Content -->
     <div class="container mx-auto p-6 max-w-3xl">
@@ -158,9 +148,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold">
                         Add Feed Stock
                     </button>
-                    <a href="index.php" class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-semibold inline-block">
-                        Cancel
-                    </a>
                 </div>
             </form>
         </div>

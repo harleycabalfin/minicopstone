@@ -1,209 +1,72 @@
 <?php
-require_once '../../config/database.php';
 require_once '../../includes/db.php';
-require_once '../../includes/auth.php';
-require_once '../../includes/functions.php';
-
-requireAdmin();
-checkSessionTimeout();
-
-$page_title = "Add New User";
+requireUser();
 $db = getDB();
-$error = '';
-$success = '';
+
+$success = $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = sanitizeInput($_POST['username']);
-    $full_name = sanitizeInput($_POST['full_name']);
-    $email = sanitizeInput($_POST['email']);
-    $password = $_POST['password'];
-    $confirm_password = $_POST['confirm_password'];
-    $role = sanitizeInput($_POST['role']);
-    $phone = sanitizeInput($_POST['phone']);
-    
-    // Validation
-    if (empty($username) || empty($full_name) || empty($email) || empty($password)) {
-        $error = "Please fill in all required fields.";
-    } elseif ($password !== $confirm_password) {
-        $error = "Passwords do not match.";
-    } elseif (strlen($password) < PASSWORD_MIN_LENGTH) {
-        $error = "Password must be at least " . PASSWORD_MIN_LENGTH . " characters.";
-    } elseif (!isValidEmail($email)) {
-        $error = "Invalid email format.";
+  $full_name = trim($_POST['full_name']);
+  $username = trim($_POST['username']);
+  $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
+  $role = $_POST['role'];
+
+  if (!$full_name || !$username || !$password) {
+    $error = "All fields are required.";
+  } else {
+    $stmt = $db->prepare("INSERT INTO users (full_name, username, password, role, created_at) VALUES (?, ?, ?, ?, NOW())");
+    $stmt->bind_param("ssss", $full_name, $username, $password, $role);
+    if ($stmt->execute()) {
+      $success = "User added successfully!";
     } else {
-        // Check if username exists
-        $stmt = $db->prepare("SELECT user_id FROM users WHERE username = ?");
-        $stmt->bind_param("s", $username);
-        $stmt->execute();
-        
-        if ($stmt->get_result()->num_rows > 0) {
-            $error = "Username already exists.";
-        } else {
-            // Check if email exists
-            $stmt = $db->prepare("SELECT user_id FROM users WHERE email = ?");
-            $stmt->bind_param("s", $email);
-            $stmt->execute();
-            
-            if ($stmt->get_result()->num_rows > 0) {
-                $error = "Email already exists.";
-            } else {
-                // Hash password
-                $password_hash = password_hash($password, PASSWORD_DEFAULT);
-                
-                // Insert user
-                $stmt = $db->prepare("INSERT INTO users (username, password_hash, full_name, email, role, phone) 
-                                      VALUES (?, ?, ?, ?, ?, ?)");
-                $stmt->bind_param("ssssss", $username, $password_hash, $full_name, $email, $role, $phone);
-                
-                if ($stmt->execute()) {
-                    $new_user_id = $db->insert_id;
-                    logActivity($_SESSION['user_id'], "Added new user: $username", "users", $new_user_id);
-                    
-                    $success = "User added successfully!";
-                    header("Location: index.php");
-                    exit();
-                } else {
-                    $error = "Failed to add user. Please try again.";
-                }
-            }
-        }
+      $error = "Failed to add user. Username may already exist.";
     }
+  }
 }
-
-include '../../includes/header.php';
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add User - <?php echo SITE_NAME; ?></title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <div class="bg-gray-800 text-white p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold">Add User</h1>
+    <a href="index.php" class="hover:text-gray-300">Back</a>
+  </div>
 
-<div class="max-w-3xl mx-auto">
-    <div class="mb-6">
-        <nav class="text-sm">
-            <a href="index.php" class="text-green-600 hover:underline">User Management</a>
-            <span class="mx-2">/</span>
-            <span class="text-gray-600">Add New User</span>
-        </nav>
-    </div>
+  <div class="container mx-auto p-6 max-w-lg">
+    <?php if ($success): ?>
+      <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4"><?php echo $success; ?></div>
+    <?php elseif ($error): ?>
+      <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4"><?php echo $error; ?></div>
+    <?php endif; ?>
 
-    <div class="bg-white rounded-lg shadow-md p-8">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">Add New User</h2>
-
-        <?php if (!empty($error)): ?>
-            <div class="alert alert-danger mb-6">
-                <?php echo htmlspecialchars($error); ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if (!empty($success)): ?>
-            <div class="alert alert-success mb-6">
-                <?php echo htmlspecialchars($success); ?>
-            </div>
-        <?php endif; ?>
-
-        <form method="POST" action="" class="space-y-6" data-validate>
-            <!-- Username -->
-            <div>
-                <label for="username" class="form-label">
-                    Username <span class="text-red-500">*</span>
-                </label>
-                <input type="text" 
-                       name="username" 
-                       id="username" 
-                       required
-                       class="form-control"
-                       placeholder="Enter username">
-            </div>
-
-            <!-- Full Name -->
-            <div>
-                <label for="full_name" class="form-label">
-                    Full Name <span class="text-red-500">*</span>
-                </label>
-                <input type="text" 
-                       name="full_name" 
-                       id="full_name" 
-                       required
-                       class="form-control"
-                       placeholder="Enter full name">
-            </div>
-
-            <!-- Email -->
-            <div>
-                <label for="email" class="form-label">
-                    Email <span class="text-red-500">*</span>
-                </label>
-                <input type="email" 
-                       name="email" 
-                       id="email" 
-                       required
-                       class="form-control"
-                       placeholder="Enter email address">
-            </div>
-
-            <!-- Phone -->
-            <div>
-                <label for="phone" class="form-label">
-                    Phone Number
-                </label>
-                <input type="text" 
-                       name="phone" 
-                       id="phone" 
-                       class="form-control"
-                       placeholder="09XX XXX XXXX">
-            </div>
-
-            <!-- Role -->
-            <div>
-                <label for="role" class="form-label">
-                    Role <span class="text-red-500">*</span>
-                </label>
-                <select name="role" id="role" required class="form-control">
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                </select>
-                <p class="text-sm text-gray-500 mt-1">
-                    Admins have full access, Users have limited access
-                </p>
-            </div>
-
-            <!-- Password -->
-            <div>
-                <label for="password" class="form-label">
-                    Password <span class="text-red-500">*</span>
-                </label>
-                <input type="password" 
-                       name="password" 
-                       id="password" 
-                       required
-                       minlength="<?php echo PASSWORD_MIN_LENGTH; ?>"
-                       class="form-control"
-                       placeholder="Enter password">
-                <p class="text-sm text-gray-500 mt-1">
-                    Minimum <?php echo PASSWORD_MIN_LENGTH; ?> characters
-                </p>
-            </div>
-
-            <!-- Confirm Password -->
-            <div>
-                <label for="confirm_password" class="form-label">
-                    Confirm Password <span class="text-red-500">*</span>
-                </label>
-                <input type="password" 
-                       name="confirm_password" 
-                       id="confirm_password" 
-                       required
-                       class="form-control"
-                       placeholder="Confirm password">
-            </div>
-
-            <!-- Submit Buttons -->
-            <div class="flex justify-end space-x-4">
-                <a href="index.php" class="btn bg-gray-500 text-white">
-                    Cancel
-                </a>
-                <button type="submit" class="btn btn-primary">
-                    Add User
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<?php include '../../includes/footer.php'; ?>
+    <form method="POST" class="bg-white p-6 rounded-lg shadow-md space-y-4">
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Full Name *</label>
+        <input type="text" name="full_name" required class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500">
+      </div>
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Username *</label>
+        <input type="text" name="username" required class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500">
+      </div>
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Password *</label>
+        <input type="password" name="password" required class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500">
+      </div>
+      <div>
+        <label class="block text-gray-700 font-medium mb-1">Role *</label>
+        <select name="role" required class="w-full border rounded-lg px-4 py-2 focus:ring-2 focus:ring-orange-500">
+          <option value="">Select Role</option>
+          <option value="admin">Admin</option>
+          <option value="staff">Staff</option>
+        </select>
+      </div>
+      <button type="submit" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg font-semibold">Add User</button>
+    </form>
+  </div>
+</body>
+</html>
