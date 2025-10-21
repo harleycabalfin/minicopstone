@@ -9,13 +9,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $full_name = trim($_POST['full_name']);
   $username = trim($_POST['username']);
   $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
-  $role = $_POST['role'];
+  $role = trim($_POST['role']);
 
-  if (!$full_name || !$username || !$password) {
+  if (!$full_name || !$username || !$password || !$role) {
     $error = "All fields are required.";
   } else {
-    $stmt = $db->prepare("INSERT INTO users (full_name, username, password, role, created_at) VALUES (?, ?, ?, ?, NOW())");
+    $stmt = $db->prepare("INSERT INTO users (full_name, username, password_hash, role, created_at) VALUES (?, ?, ?, ?, NOW())");
     $stmt->bind_param("ssss", $full_name, $username, $password, $role);
+
     if ($stmt->execute()) {
       $success = "User added successfully!";
     } else {

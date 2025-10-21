@@ -23,9 +23,9 @@ define("SITE_NAME", "Poultry Farm System");
 // AUTO-DETECT: WEB OR API REQUEST
 // ======================================================================
 $is_api_request = (
-    isset($_SERVER['HTTP_ACCEPT']) &&
+    isset($_SERVER['HTTP_ACCEPT']) && 
     strpos($_SERVER['HTTP_ACCEPT'], 'application/json') !== false
-) ||
+) || 
 (strpos($_SERVER['REQUEST_URI'], '/api/') !== false);
 
 // ======================================================================
@@ -91,7 +91,7 @@ function checkSessionTimeout() {
 }
 
 // ======================================================================
-// LOGIN FUNCTION (supports both Web & API) — uses password_hash
+// LOGIN FUNCTION (supports both Web & API)
 // ======================================================================
 function login($username, $password) {
     global $conn, $is_api_request;
@@ -104,9 +104,8 @@ function login($username, $password) {
     if ($result->num_rows === 1) {
         $user = $result->fetch_assoc();
 
-        // ✅ Secure password verification
-        if (password_verify($password, $user['password_hash'])) {
-
+        // ✅ NOTE: For security, upgrade to password_hash in your DB soon
+        if ($password === $user['password_hash']) {
             if (!$is_api_request) {
                 startSecureSession();
                 $_SESSION['user_id'] = $user['user_id'];
@@ -121,7 +120,7 @@ function login($username, $password) {
             $update->bind_param("i", $user['user_id']);
             $update->execute();
 
-            // Log the action
+            // Log
             logAction($user['user_id'], "User logged in", "users", $user['user_id']);
 
             $response = [
@@ -141,7 +140,7 @@ function login($username, $password) {
         $response = ["success" => false, "message" => "User not found or inactive."];
     }
 
-    // If API request, send JSON
+    // If API request, send JSON instead of redirect
     if ($is_api_request) {
         header("Content-Type: application/json");
         echo json_encode($response);
@@ -152,7 +151,7 @@ function login($username, $password) {
 }
 
 // ======================================================================
-// LOGGING FUNCTION
+// LOGGING FUNCTION (works for both Web + API)
 // ======================================================================
 function logAction($user_id, $action, $table_affected = null, $record_id = null) {
     global $conn;
